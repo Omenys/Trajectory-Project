@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,12 +11,14 @@ public class LaserTurret : MonoBehaviour
     [SerializeField] Transform barrelEnd;
     [SerializeField] LineRenderer line;
 
+    [SerializeField] int maxBounces = 1;
+
     List<Vector3> laserPoints = new List<Vector3>();
 
     // Start is called before the first frame update
     void Start()
     {
-        
+
     }
 
     // Update is called once per frame
@@ -29,13 +30,34 @@ public class LaserTurret : MonoBehaviour
         laserPoints.Clear();
         laserPoints.Add(barrelEnd.position);
 
-        if(Physics.Raycast(barrelEnd.position, barrelEnd.forward, out RaycastHit hit, 1000.0f, targetLayer))
+        Vector3 direction = barrelEnd.forward;
+        Vector3 position = barrelEnd.position;
+
+        // loop until max bounces reached
+        for (int i = 0; i < maxBounces; i++)
         {
-            laserPoints.Add(hit.point);
+            if (Physics.Raycast(position, direction, out RaycastHit hit, 1000.0f, targetLayer))
+            {
+                laserPoints.Add(hit.point);
+
+                Vector3 normal = hit.normal;
+
+                // reflect vector
+                direction = direction - (2 * Vector3.Dot(direction, normal) * normal);
+
+                // offset for clipping
+                position = hit.point + (direction.normalized * 0.01f);
+            }
+            else
+            {
+                // continue in current direction
+                laserPoints.Add(position + (direction * 1000.0f));
+                break;
+            }
         }
 
         line.positionCount = laserPoints.Count;
-        for(int i = 0; i < line.positionCount; i++)
+        for (int i = 0; i < line.positionCount; i++)
         {
             line.SetPosition(i, laserPoints[i]);
         }
@@ -46,10 +68,10 @@ public class LaserTurret : MonoBehaviour
         Ray cameraRay = Camera.main.ScreenPointToRay(Input.mousePosition);
 
         RaycastHit hit;
-        if(Physics.Raycast(cameraRay, out hit, 1000, targetLayer ))
+        if (Physics.Raycast(cameraRay, out hit, 1000, targetLayer))
         {
             crosshair.transform.forward = hit.normal;
-            crosshair.transform.position = hit.point + hit.normal * 0.1f;
+            crosshair.transform.position = hit.point + (hit.normal * 0.1f);
         }
     }
 
@@ -59,4 +81,6 @@ public class LaserTurret : MonoBehaviour
         Quaternion lookRotation = Quaternion.LookRotation(new Vector3(directionToTarget.x, directionToTarget.y, directionToTarget.z));
         turretBase.transform.rotation = Quaternion.Slerp(turretBase.transform.rotation, lookRotation, Time.deltaTime * baseTurnSpeed);
     }
+
+
 }
